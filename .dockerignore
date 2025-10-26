@@ -1,0 +1,35 @@
+# Docker ignore file for project root
+
+# Git
+.git
+.gitignore
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Documentation
+*.md
+*.plan.md
+*.example.md
+
+# Logs
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files (will be copied separately)
+# .env*

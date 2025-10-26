@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌿 AI Nông Nghiệp - Dashboard</title>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Tailwind CSS (optional) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(90deg, #00C851, #00695C);
+            padding: 2rem;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .metric-card h3 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-card p {
+            opacity: 0.9;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .error {
+            background: #ff5252;
+            color: white;
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌿 Trí Tuệ Nhân Tạo Nông Nghiệp</h1>
+            <p>📊 Dashboard Thống kê & Báo cáo</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            🔄 Đang tải dữ liệu...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <!-- Metrics -->
+            <div class="card">
+                <h2>📈 Chỉ số tổng quan</h2>
+                <div id="metricsGrid" class="metrics-grid"></div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="charts-grid">
+                <div class="card">
+                    <h2>📊 Phân tích theo tuần</h2>
+                    <div class="chart-container">
+                        <canvas id="weeklyChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2>🦠 Phân bố bệnh</h2>
+                    <div class="chart-container">
+                        <canvas id="diseaseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        // Global variables
+        let weeklyChart = null;
+        let diseaseChart = null;
+        
+        // ================== API Functions ==================
+        
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/statistics`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+                showError('Không thể tải dữ liệu thống kê: ' + error.message);
+                return null;
+            }
+        }
+        
+        // ================== Render Functions ==================
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+        
+        function renderMetrics(metrics) {
+            const grid = document.getElementById('metricsGrid');
+            grid.innerHTML = `
+                <div class="metric-card">
+                    <h3>${metrics.total_analysis.toLocaleString()}</h3>
+                    <p>📈 Tổng phân tích</p>
+                    <small>+${metrics.total_analysis_today} hôm nay</small>
+                </div>
+                <div class="metric-card">
+                    <h3>${metrics.accuracy}%</h3>
+                    <p>🎯 Độ chính xác</p>
+                    <small>+${metrics.accuracy_delta}%</small>
+                </div>
+                <div class="metric-card">
+                    <h3>${metrics.chatbot_questions.toLocaleString()}</h3>
+                    <p>💬 Câu hỏi chatbot</p>
+                    <small>+${metrics.chatbot_questions_today} hôm nay</small>
+                </div>
+                <div class="metric-card">
+                    <h3>${metrics.total_users.toLocaleString()}</h3>
+                    <p>👥 Người dùng</p>
+                    <small>+${metrics.new_users} mới</small>
+                </div>
+            `;
+        }
+        
+        function renderWeeklyChart(data) {
+            const ctx = document.getElementById('weeklyChart');
+            
+            if (weeklyChart) {
+                weeklyChart.destroy();
+            }
+            
+            weeklyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Lượt phân tích',
+                        data: data.data,
+                        backgroundColor: 'rgba(76, 175, 80, 0.6)',
+                        borderColor: 'rgba(76, 175, 80, 1)',
+                        borderWidth: 2,
+                        borderRadius: 5,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 20
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderDiseaseChart(data) {
+            const ctx = document.getElementById('diseaseChart');
+            
+            if (diseaseChart) {
+                diseaseChart.destroy();
+            }
+            
+            diseaseChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        data: data.data,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.8)',
+                            'rgba(54, 162, 235, 0.8)',
+                            'rgba(255, 206, 86, 0.8)',
+                            'rgba(75, 192, 192, 0.8)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 2,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 10,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // ================== Main ==================
+        
+        async function init() {
+            const data = await loadStatistics();
+            
+            if (!data || !data.success) {
+                return;
+            }
+            
+            // Hide loading, show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Render metrics
+            renderMetrics(data.metrics);
+            
+            // Render charts
+            renderWeeklyChart(data.weekly_analysis);
+            renderDiseaseChart(data.disease_distribution);
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
+

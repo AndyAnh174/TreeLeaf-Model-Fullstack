@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Backend API - Python FastAPI
+  backend:
+    build:
+      context: ./Alo_LeafDisease
+      dockerfile: Dockerfile
+    container_name: pwa-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=production
+    env_file:
+      - ./Alo_LeafDisease/.env.production
+    volumes:
+      - ./Alo_LeafDisease:/app
+      - model_cache:/app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  # Frontend - Next.js
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    container_name: pwa-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Nginx - Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: pwa-nginx
+    ports:
+      - "8841:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  model_cache:
+
