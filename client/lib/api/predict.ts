@@ -7,7 +7,7 @@ export async function predictDisease(file: File): Promise<PredictResponse> {
     formData.append("file", file);
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/predict`,
+      `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005"}/predict`,
       {
         method: "POST",
         body: formData,
