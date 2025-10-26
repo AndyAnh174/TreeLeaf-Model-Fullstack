@@ -18,7 +18,7 @@ services:
       - ./Alo_LeafDisease:/app
       - model_cache:/app/models
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
